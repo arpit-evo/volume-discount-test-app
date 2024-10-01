@@ -1,0 +1,16 @@
+query RunInput {
+  cart {
+    lines {
+      id
+      quantity
+    }
+  }
+  discountNode {
+    metafield(
+      namespace: "$app:discount-test"
+      key: "function-configuration"
+    ) {
+      value
+    }
+  }
+}
