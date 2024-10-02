@@ -15,50 +15,54 @@ const EMPTY_DISCOUNT = {
   discounts: [],
 };
 
+type Configuration = {
+  quantity: number;
+  percentage: number;
+};
+
 /**
  * @param {RunInput} input
  * @returns {FunctionRunResult}
  */
 export function run(input: any) {
-  /**
-   * @type {{
-   *   quantity: number
-   *   percentage: number
-   * }}
-   */
-  const configuration = JSON.parse(
-    input?.discountNode?.metafield?.value ?? "{}",
+  const configurations: Array<Configuration> = JSON.parse(
+    input?.discountNode?.metafield?.value ?? "[]",
   );
 
-  if (!configuration.quantity || !configuration.percentage) {
+  if (!configurations.length) {
     return EMPTY_DISCOUNT;
   }
-  const targets = input.cart.lines
-    .filter((line: any) => line.quantity >= configuration.quantity)
+
+  let discounts = input.cart.lines
     .map((line: any) => {
-      return /** @type {Target} */ {
-        cartLine: {
-          id: line.id,
-        },
-      };
-    });
+      const applicableConfig = configurations
+        .filter((configuration) => line.quantity >= configuration.quantity)
+        .sort((a, b) => b.quantity - a.quantity)[0];
+      console.log("line id", JSON.stringify(line));
 
-  if (!targets.length) {
-    console.error("No cart lines qualify for volume discount.");
-    return EMPTY_DISCOUNT;
-  }
+      if (!applicableConfig) {
+        return null;
+      }
 
-  return {
-    discounts: [
-      {
-        targets,
+      return {
+        targets: [
+          {
+            cartLine: {
+              id: line.id,
+            },
+          },
+        ],
         value: {
           percentage: {
-            value: configuration.percentage.toString(),
+            value: applicableConfig.percentage.toString(),
           },
         },
-      },
-    ],
+      };
+    })
+    .filter((discount: any) => discount !== null);
+
+  return {
+    discounts: discounts,
     discountApplicationStrategy: DiscountApplicationStrategy.First,
   };
 }
