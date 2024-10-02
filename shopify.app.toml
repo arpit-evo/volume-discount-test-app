@@ -3,7 +3,7 @@
 client_id = "66226487e44484fa62dd83d19f756fe5"
 name = "discount-test"
 handle = "discount-test-110"
-application_url = "https://sink-yen-plug-tunisia.trycloudflare.com"
+application_url = "https://counseling-arizona-bg-wallace.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_products,write_discounts,write_discounts_allocator_functions,writ
 
 [auth]
 redirect_urls = [
-  "https://sink-yen-plug-tunisia.trycloudflare.com/auth/callback",
-  "https://sink-yen-plug-tunisia.trycloudflare.com/auth/shopify/callback",
-  "https://sink-yen-plug-tunisia.trycloudflare.com/api/auth/callback"
+  "https://counseling-arizona-bg-wallace.trycloudflare.com/auth/callback",
+  "https://counseling-arizona-bg-wallace.trycloudflare.com/auth/shopify/callback",
+  "https://counseling-arizona-bg-wallace.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
