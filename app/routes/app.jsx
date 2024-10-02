@@ -28,7 +28,7 @@ export default function App() {
             Home
           </Link>
           <Link to="/app/additional">Additional page</Link>
-          <Link to="/app/additional">My page</Link>
+          <Link to="/app/volume-discount/$functionId/new">Create discount</Link>
         </ui-nav-menu>
         <Outlet />
       </DiscountProvider>
