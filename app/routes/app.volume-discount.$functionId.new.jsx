@@ -1,36 +1,39 @@
-import { useEffect, useMemo } from "react";
 import { json } from "@remix-run/node";
-import { useForm, useField } from "@shopify/react-form";
-import { CurrencyCode } from "@shopify/react-i18n";
 import {
   Form,
   useActionData,
   useNavigation,
   useSubmit,
 } from "@remix-run/react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import {
   ActiveDatesCard,
   CombinationCard,
   DiscountClass,
   DiscountMethod,
-  MethodCard,
   DiscountStatus,
+  MethodCard,
   RequirementType,
   SummaryCard,
-  UsageLimitsCard,
 } from "@shopify/discount-app-components";
 import {
   Banner,
+  BlockStack,
+  Box,
+  Button,
   Card,
-  Text,
+  Divider,
+  IndexTable,
   Layout,
   Page,
   PageActions,
-  TextField,
-  BlockStack,
-  Box,
+  Text,
 } from "@shopify/polaris";
-
+import { DeleteIcon } from "@shopify/polaris-icons";
+import { useField, useForm } from "@shopify/react-form";
+import { CurrencyCode } from "@shopify/react-i18n";
+import { useEffect, useMemo, useState } from "react";
+import DiscountLevelTable from "../components/DiscountLevelTable";
 import shopify from "../shopify.server";
 
 export const action = async ({ params, request }) => {
@@ -62,10 +65,12 @@ export const action = async ({ params, request }) => {
       namespace: "$app:discount-test",
       key: "function-configuration",
       type: "json",
-      value: JSON.stringify({
-        quantity: configuration.quantity,
-        percentage: configuration.percentage,
-      }),
+      value: JSON.stringify(
+        configuration.map((c) => ({
+          quantity: c.quantity,
+          percentage: c.percentage,
+        })),
+      ),
     },
   ];
 
@@ -144,9 +149,17 @@ export default function VolumeNew() {
   const navigation = useNavigation();
   const todaysDate = useMemo(() => new Date(), []);
 
+  const [configurations, setConfigurations] = useState([
+    { quantity: "1", percentage: "0", message: "" },
+  ]);
+  const [rowMarkUp, setRowMarkup] = useState([]);
+  const [products, setProducts] = useState([]);
+
   const isLoading = navigation.state === "submitting";
   const currencyCode = CurrencyCode.Cad;
   const submitErrors = actionData?.errors || [];
+  const appBridge = useAppBridge();
+
   const returnToDiscounts = () => open("shopify://admin/discounts", "_top");
 
   useEffect(() => {
@@ -168,7 +181,6 @@ export default function VolumeNew() {
       appliesOncePerCustomer,
       startDate,
       endDate,
-      configuration,
     },
     submit,
   } = useForm({
@@ -188,12 +200,15 @@ export default function VolumeNew() {
       appliesOncePerCustomer: useField(false),
       startDate: useField(todaysDate),
       endDate: useField(null),
-      configuration: {
-        quantity: useField("1"),
-        percentage: useField("0"),
-      },
     },
     onSubmit: async (form) => {
+      const discountConfigs = configurations.map((config) => {
+        return {
+          quantity: parseInt(config.quantity),
+          percentage: parseFloat(config.percentage),
+        };
+      });
+
       const discount = {
         title: form.discountTitle,
         method: form.discountMethod,
@@ -203,10 +218,7 @@ export default function VolumeNew() {
         appliesOncePerCustomer: form.appliesOncePerCustomer,
         startsAt: form.startDate,
         endsAt: form.endDate,
-        configuration: {
-          quantity: parseInt(form.configuration.quantity),
-          percentage: parseFloat(form.configuration.percentage),
-        },
+        configuration: discountConfigs,
       };
 
       submitForm({ discount: JSON.stringify(discount) }, { method: "post" });
@@ -233,6 +245,58 @@ export default function VolumeNew() {
       </Layout.Section>
     ) : null;
 
+  const handleAddConfig = () => {
+    setConfigurations((prev) => [
+      ...prev,
+      { quantity: "1", percentage: "0", message: "" },
+    ]);
+  };
+
+  // Function to remove a configuration
+  const handleRemoveConfig = (index) => {
+    setConfigurations((prev) => prev.filter((_, i) => i !== index));
+  };
+  const handleConfigChange = (index, field, value) => {
+    const updatedConfigurations = [...configurations];
+    updatedConfigurations[index][field] = value;
+    setConfigurations(updatedConfigurations);
+  };
+
+  const openResourcePicker = async () => {
+    const resourcePicker = await appBridge.resourcePicker({
+      type: "product",
+      multiple: true,
+      action: "add",
+    });
+    setProducts(resourcePicker);
+  };
+
+  const resourceName = {
+    singular: "product",
+    plural: "products",
+  };
+
+  const handleRemoveProduct = (index) => {
+    setProducts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    const rows = products.map((product, index) => (
+      <IndexTable.Row id={index.toString()} position={index} key={index}>
+        <IndexTable.Cell>{product.title}</IndexTable.Cell>
+        <IndexTable.Cell>
+          <Button
+            icon={DeleteIcon}
+            onClick={() => handleRemoveProduct(index)}
+          ></Button>
+        </IndexTable.Cell>
+      </IndexTable.Row>
+    ));
+    if (products.length > 0) {
+      setRowMarkup(rows);
+    }
+  }, [products]);
+
   return (
     <Page>
       <ui-title-bar title="Create volume discount">
@@ -247,7 +311,7 @@ export default function VolumeNew() {
         {errorBanner}
         <Layout.Section>
           <Form method="post">
-            <BlockStack align="space-around" gap="200">
+            <BlockStack align="space-around" gap="500">
               <MethodCard
                 title="Volume"
                 discountTitle={discountTitle}
@@ -255,32 +319,42 @@ export default function VolumeNew() {
                 discountCode={discountCode}
                 discountMethod={discountMethod}
               />
-              <Box paddingBlockEnd="300">
+              <Box>
                 <Card>
-                  <BlockStack>
-                    <Text variant="headingMd" as="h2">
-                      Volume
+                  <BlockStack gap={400}>
+                    <Text as="h2" variant="headingMd">
+                      Select Products
                     </Text>
-                    <TextField
-                      label="Minimum quantity"
-                      autoComplete="on"
-                      {...configuration.quantity}
-                    />
-                    <TextField
-                      label="Discount percentage"
-                      autoComplete="on"
-                      {...configuration.percentage}
-                      suffix="%"
-                    />
+                    <Button
+                      onClick={async () => {
+                        await openResourcePicker();
+                      }}
+                      fullWidth={false}
+                    >
+                      Select Products
+                    </Button>
                   </BlockStack>
+                  <Divider />
+                  {products.length > 0 && (
+                    <div className="">
+                      <IndexTable
+                        resourceName={resourceName}
+                        itemCount={products.length}
+                        headings={["Title", "Actions"]}
+                        selectable={false}
+                      >
+                        {rowMarkUp}
+                      </IndexTable>
+                    </div>
+                  )}
                 </Card>
               </Box>
-              {discountMethod.value === DiscountMethod.Code && (
-                <UsageLimitsCard
-                  totalUsageLimit={usageLimit}
-                  oncePerCustomer={appliesOncePerCustomer}
-                />
-              )}
+              <DiscountLevelTable
+                configurations={configurations}
+                handleConfigChange={handleConfigChange}
+                handleRemoveConfig={handleRemoveConfig}
+                handleAddConfig={handleAddConfig}
+              />
               <CombinationCard
                 combinableDiscountTypes={combinesWith}
                 discountClass={DiscountClass.Product}
