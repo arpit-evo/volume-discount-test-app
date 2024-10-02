@@ -3,13 +3,19 @@ query RunInput {
     lines {
       id
       quantity
+      merchandise {
+        ... on ProductVariant {
+          id
+          product {
+            title
+            id
+          }
+        }
+      }
     }
   }
   discountNode {
-    metafield(
-      namespace: "$app:discount-test"
-      key: "function-configuration"
-    ) {
+    metafield(namespace: "$app:discount-test", key: "function-configuration") {
       value
     }
   }
