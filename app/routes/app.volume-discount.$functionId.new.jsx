@@ -5,7 +5,6 @@ import {
   useNavigation,
   useSubmit,
 } from "@remix-run/react";
-import { useAppBridge } from "@shopify/app-bridge-react";
 import {
   ActiveDatesCard,
   CombinationCard,
@@ -19,22 +18,16 @@ import {
 import {
   Banner,
   BlockStack,
-  Box,
-  Button,
-  Card,
-  Divider,
-  IndexTable,
   Layout,
   Page,
   PageActions,
-  Text,
 } from "@shopify/polaris";
-import { DeleteIcon } from "@shopify/polaris-icons";
 import { useField, useForm } from "@shopify/react-form";
 import { CurrencyCode } from "@shopify/react-i18n";
 import { useEffect, useMemo, useState } from "react";
 import DiscountLevelTable from "../components/DiscountLevelTable";
 import shopify from "../shopify.server";
+import ProductTable from "../components/ProductTable";
 
 export const action = async ({ params, request }) => {
   const { functionId } = params;
@@ -152,13 +145,12 @@ export default function VolumeNew() {
   const [configurations, setConfigurations] = useState([
     { quantity: "1", percentage: "0", message: "" },
   ]);
-  const [rowMarkUp, setRowMarkup] = useState([]);
+
   const [products, setProducts] = useState([]);
 
   const isLoading = navigation.state === "submitting";
   const currencyCode = CurrencyCode.Cad;
   const submitErrors = actionData?.errors || [];
-  const appBridge = useAppBridge();
 
   const returnToDiscounts = () => open("shopify://admin/discounts", "_top");
 
@@ -252,50 +244,19 @@ export default function VolumeNew() {
     ]);
   };
 
-  // Function to remove a configuration
   const handleRemoveConfig = (index) => {
     setConfigurations((prev) => prev.filter((_, i) => i !== index));
   };
+
   const handleConfigChange = (index, field, value) => {
     const updatedConfigurations = [...configurations];
     updatedConfigurations[index][field] = value;
     setConfigurations(updatedConfigurations);
   };
 
-  const openResourcePicker = async () => {
-    const resourcePicker = await appBridge.resourcePicker({
-      type: "product",
-      multiple: true,
-      action: "add",
-    });
-    setProducts(resourcePicker);
-  };
-
-  const resourceName = {
-    singular: "product",
-    plural: "products",
-  };
-
   const handleRemoveProduct = (index) => {
     setProducts((prev) => prev.filter((_, i) => i !== index));
   };
-
-  useEffect(() => {
-    const rows = products.map((product, index) => (
-      <IndexTable.Row id={index.toString()} position={index} key={index}>
-        <IndexTable.Cell>{product.title}</IndexTable.Cell>
-        <IndexTable.Cell>
-          <Button
-            icon={DeleteIcon}
-            onClick={() => handleRemoveProduct(index)}
-          ></Button>
-        </IndexTable.Cell>
-      </IndexTable.Row>
-    ));
-    if (products.length > 0) {
-      setRowMarkup(rows);
-    }
-  }, [products]);
 
   return (
     <Page>
@@ -319,36 +280,11 @@ export default function VolumeNew() {
                 discountCode={discountCode}
                 discountMethod={discountMethod}
               />
-              <Box>
-                <Card>
-                  <BlockStack gap={400}>
-                    <Text as="h2" variant="headingMd">
-                      Select Products
-                    </Text>
-                    <Button
-                      onClick={async () => {
-                        await openResourcePicker();
-                      }}
-                      fullWidth={false}
-                    >
-                      Select Products
-                    </Button>
-                  </BlockStack>
-                  <Divider />
-                  {products.length > 0 && (
-                    <div className="">
-                      <IndexTable
-                        resourceName={resourceName}
-                        itemCount={products.length}
-                        headings={["Title", "Actions"]}
-                        selectable={false}
-                      >
-                        {rowMarkUp}
-                      </IndexTable>
-                    </div>
-                  )}
-                </Card>
-              </Box>
+              <ProductTable
+                products={products}
+                handleRemoveProduct={handleRemoveProduct}
+                setProducts={setProducts}
+              />
               <DiscountLevelTable
                 configurations={configurations}
                 handleConfigChange={handleConfigChange}
